@@ -1,22 +1,18 @@
 
-const app = new PIXI.Application({width:window.innerWidth, height:window.innerHeight});
+const app = new PIXI.Application({
+                width:window.innerWidth,
+                height:window.innerHeight,
+                autoResize: true,
+                resolution: window.devicePixelRatio,
+            });
 
 //add the canvas to the html document
 document.body.appendChild(app.view);
 
-app.renderer.autoResize = true;
 app.view.style.position = "absolute";
 app.view.style.display = "block";
 
-app.renderer.resize(window.innerWidth,window.innerHeight);
-
-window.addEventListener('resize',() => {
-    app.renderer.view.style.width = window.innerWidth + "px";
-    app.renderer.view.style.height = window.innerHeight + "px";
-    app.renderer.resize(window.innerWidth,window.innerHeight);
-});
-
-let state,bgFar, bgMid,clouds,groundTiles,animatedCat, animation, frames;
+let backgroundContainer,state,bgFar, bgMid,clouds,groundTiles,animatedCat, animation, frames;
 
 //load and create sprite
 PIXI.loader
@@ -33,63 +29,51 @@ PIXI.loader
 
 function setup() {
     //set the background
-    let backgroundContainer = new PIXI.Container();
+    backgroundContainer = new PIXI.Container();
 
     let background = new PIXI.Sprite(PIXI.loader.resources["images/background.png"].texture);
-    background.scale.set(0.5);
 
     //set far background
     let bgFarTexture = PIXI.Texture.from("images/bg-far.png");
-    bgFar = new PIXI.extras.TilingSprite(bgFarTexture,app.screen.width,app.screen.height);
-    bgFar.tileScale.set(0.3);
+    bgFar = new PIXI.extras.TilingSprite(bgFarTexture,window.innerWidth,window.innerHeight);
     bgFar.tilePosition.x = 0;
-    //bgFar.tilePosition.y = app.screen.height - bgFarTexture.height;
 
     //set middle background
     let bgMidTexture = PIXI.Texture.from("images/bg-mid.png");
     bgMid = new PIXI.extras.TilingSprite(bgMidTexture,app.screen.width,app.screen.height);
-    bgMid.tileScale.set(0.3);
     bgMid.tilePosition.x = 0;
-    //bgMid.tilePosition.y = app.screen.height - bgMidTexture.height;
 
     //set clouds background
     let cloudsTexture = PIXI.Texture.from("images/clouds.png");
     clouds = new PIXI.extras.TilingSprite(cloudsTexture,app.screen.width,app.screen.height/2);
-    clouds.tileScale.set(0.3);
     clouds.tilePosition.x = 0;
-    //clouds.tilePosition.y = app.screen.height - cloudsTexture.height;
 
     //add ground tiles
     let tilesSpriteSheet = PIXI.loader.resources["images/pink-pack/pink-tiles-sprites.json"].textures;
-
-    groundTiles = new PIXI.extras.TilingSprite(tilesSpriteSheet["1.png"],app.screen.width,tilesSpriteSheet["1.png"].height/2);
+    groundTiles = new PIXI.extras.TilingSprite(tilesSpriteSheet["1.png"],window.innerWidth,tilesSpriteSheet["1.png"].height/2);
     groundTiles.y = app.renderer.height - groundTiles.height;
     groundTiles.tilePosition.x =0;
     groundTiles.tileScale.set(0.5);
 
-    backgroundContainer.addChild(background,bgFar,bgMid,clouds, groundTiles);
-
-    app.stage.addChild(backgroundContainer);
+    backgroundContainer.addChild(background,bgFar,bgMid,clouds);
+    app.stage.addChild(backgroundContainer,groundTiles);
 
     //set the cat sprite and animate it
-
-    console.log(frames);
     animatedCat = new PIXI.extras.AnimatedSprite(getFrames("Idle",10));
-    console.log(animatedCat);
     animatedCat.scale.set(0.3);
-    animatedCat.position.set(100,app.screen.height- groundTiles.height - animatedCat.height+7);
+    animatedCat.position.set(100,window.innerHeight- groundTiles.height - animatedCat.height+7);
     animatedCat.vx = 0;
     animatedCat.animationSpeed = 0.2;
     animatedCat.play();
-
-
+    app.stage.addChild(animatedCat);
 
     //add event listeners for keyboard controls
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("keyup", onKeyUp);
 
+    resize();
+    window.addEventListener('resize', resize);
 
-    app.stage.addChild(animatedCat);
     //Set the game state
     state = play;
 
@@ -110,8 +94,36 @@ function play() {
     groundTiles.tilePosition.x -= 1;
     animatedCat.x += animatedCat.vx;
 
+}
 
+function resize() {
+    // get window size
+    let width = window.innerWidth;
+    let height = window.innerHeight;
 
+    // resize pixi renderer
+    app.renderer.resize(width, height);
+
+    for (let i = 0; i < backgroundContainer.children.length; i++) {
+        let tilingSprite = backgroundContainer.children[i];
+
+        // change tiling sprites sizes
+        tilingSprite.width = width;
+        tilingSprite.height = height;
+
+        // and scale it based on window height
+        let scale = height / tilingSprite.texture.height;
+        console.log(tilingSprite);
+        tilingSprite.tileScale.set(scale);
+    }
+
+    // keep the hero in the bottom-center position
+    //hero.x = width / 2;
+    //hero.y = height;
+
+    // and scale the hero (max-height = height * 70%)
+    //var scale = (height * 0.7) / (hero.texture.height);
+    //.scale.set(scale, scale);
 }
 
 function getFrames(frameType,frameLimit){
@@ -121,6 +133,7 @@ function getFrames(frameType,frameLimit){
     }
     return frames;
 }
+
 
 //function for keydown event
 function onKeyDown(key) {
